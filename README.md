@@ -16,6 +16,7 @@ def hello():
 thread = hello()
 while thread.is_alive():
   print ("It's still going!")
+  sleep(3)
 ```
 
 
