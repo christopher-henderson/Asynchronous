@@ -14,7 +14,7 @@ class _Decorator(object):
     def __call__(self, *args, **kwargs):
         raise NotImplementedError("Cannot call abtract class.")
 
-    def __get__(self, obj, klass):
+    def __get__(self, obj, klass=None):
         return partial(self.__call__, obj)
 
 
