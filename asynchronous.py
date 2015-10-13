@@ -3,6 +3,7 @@ from multiprocessing import Process as _PROCESS
 from multiprocessing import Queue
 from functools import update_wrapper
 from functools import partial
+from types import FunctionType
 
 
 class _Decorator(object):
