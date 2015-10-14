@@ -77,7 +77,7 @@ class _Decorator(object):
             #       ...
             #
             # ...in which case we need to wrap __decorator__ first via
-            # __call_wrapper__ before returning the wrapper proper.
+            # __wrap__ before returning the wrapper proper.
             return self.__decorator__(*args, **kwargs)
         return self.__wrap__(args[0])
 
