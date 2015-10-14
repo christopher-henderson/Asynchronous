@@ -5,16 +5,36 @@ from functools import update_wrapper
 from functools import partial
 from inspect import getargspec
 
+__author__ = "Christopher Henderson"
+__copyright__ = "Copyright 2015, Christopher Henderson"
+__license__ = "MIT"
+__version__ = "1.0.0"
+__maintainer__ = "Christopher Henderson"
+__email__ = "chris@chenderson.org"
+
 SELF = "self"
 CLS = "cls"
 
 
 class _Decorator(object):
 
-    def __init__(self, function=None, **kwargs):
+    '''
+    Defines an interface for class based decorators.
+    When inheriting from this class the typical protocol for writting a
+    decorator class changes slightly.
+
+    __decorator__:
+        Must be overriden.
+        This is where the decorating behavior should be written, as opposed
+        to __call__.
+
+    __wrap__:
+        Optionally overriden.
+        Defines how this class wraps a target function.
+    '''
+
+    def __init__(self, function=None):
         self.function = function
-        for k, v in kwargs.items():
-            self.__setattr__(k, v)
         if function:
             # If function was not defined then updating the wrapper
             # is deferred until __call__ is executed.
@@ -30,9 +50,15 @@ class _Decorator(object):
 
     def __call__(self, *args, **kwargs):
         '''
-        __call__ behaves like a dispatcher. If a function was received
-        during instantation then __decorator__ will be called immediately.
-        Otherwise we update this object via __wrap__.
+        Depending on how this decorator was defined, __call__ will either
+        execute the target function or it will wrap the target function.
+
+        If a function was received during instantation then __decorator__ will
+        be called immediately as we have already succesfully wrapped the
+        target function.
+
+        Otherwise this decorator was given keyword arguments,
+        which means function wrapping was deferred until now.
         '''
         if self.function:
             # If we have a function already then that means the method
@@ -60,6 +86,7 @@ class _Decorator(object):
         Non-data descriptor for inserting an instance as the first parameter
         to __call__ if this object is being accessed as a member.
         '''
+
         if obj is None:
             raise TypeError('''\
 unbound method {NAME}() must be called with instance as first argument\
@@ -70,8 +97,10 @@ unbound method {NAME}() must be called with instance as first argument\
 
     def __wrap__(self, function):
         '''
-        Updates self to wrap function.
+        __wrap__ is called at the time when the decorating class is
+        given its function to wrap.
         '''
+
         self.function = function
         update_wrapper(self, function)
         return self
@@ -85,9 +114,8 @@ class _AsyncBase(_Decorator):
         self.kwargs = kwargs
 
     def __decorator__(self, *args, **kwargs):
-        '''
-        Create, start, and return a thread-like object.
-        '''
+        '''Create, start, and return a thread-like object.'''
+
         thread = self._THREADING_INTERFACE(
             target=self.function,
             args=args,
@@ -102,16 +130,25 @@ class _AsyncBase(_Decorator):
 class _QueuedResultBase(_AsyncBase):
 
     def __decorator__(self, *args, **kwargs):
+        '''Insert multiprocessing.Queue object into parameter list.'''
+
         queue = Queue()
         args = list(args)
         args.insert(self.QUEUE_INSERTION_INDEX, queue)
         return super(_QueuedResultBase, self).__decorator__(*args, **kwargs), queue
 
     def __wrap__(self, function):
+        '''Called when class first wraps a function.'''
+
         self.QUEUE_INSERTION_INDEX = self._get_insertion_index(function)
         return super(_QueuedResultBase, self).__wrap__(function)
 
     def _get_insertion_index(self, function):
+        '''
+        Retrieve the index of the parameter list where this class shoud
+        insert a multiprocessing.Queue object
+        '''
+
         # If we are decorating an unbound method then our expectation is
         # that our queueing object will be inserted as the first argument.
         #
