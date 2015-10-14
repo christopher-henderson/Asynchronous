@@ -7,7 +7,7 @@ Asynchronous is a collection of decorators for quickly writing asynchronous code
 from time import sleep
 from Asynchronous import Thread
 
-@Thread
+@Thread(daemon=False, name="hello_world")
 def hello():
   for _ in range(10):
     print ("Hello, from another thread!")
@@ -22,6 +22,8 @@ while thread.is_alive():
 
 
 The *Thread* and *Process* classes are themselves wrappers for *threading.Thread* and *multiprocessing.Process*, respectively, and as such behave like those modules. This is especially important to note if you are trying to escape the Global Interpreter Lock as you must use *Process*.
+
+For all decorators you may specify whether or not the underlying thread is daemonized (default, True) as well as any keyword arguments that would normally go into *threading.Thread* or *multiprocessing.Process* (except for *target*, *args*, and *kwargs*). Otherwise, a no-arg decorator will daemonize the thread and provide no extra arguments.
 
 ## Thread
 - **Thread** -- Basic threading decorator wrapping the *threading.Thread* class. Returns a *threading.Thread* object.
