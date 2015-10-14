@@ -3,7 +3,10 @@ from multiprocessing import Process as _PROCESS
 from multiprocessing import Queue
 from functools import update_wrapper
 from functools import partial
-from types import FunctionType
+from inspect import getargspec
+
+SELF = "self"
+CLS = "cls"
 
 
 class _Decorator(object):
@@ -36,17 +39,36 @@ class _QueuedResultBase(_AsyncBase):
 
     def __init__(self, function):
         super(_QueuedResultBase, self).__init__(function)
-        self.QUEUE_INSERTION_INDEX = 0
+        # If we are decorating an unbound method then our expectation is
+        # that our queueing object will be inserted as the first argument.
+        #
+        # However, if we are decorating a bound method or a classmethod, then
+        # our queue must come SECOND, after the self/cls parameter.
+        #
+        # The use of "self" and "cls" is such a strong convention that I
+        # believe it reasonable to expect these to be used. As such, when
+        # we instantiate a _QueuedResult we take a glance at the argument spec
+        # and if the first positional argument is either "self" or "cls" then
+        # we set the queue insertion index to that of the second argument, else
+        # the first.
+        #
+        # I've struggled to think of a more desterministic way to do this, but
+        # they have all involved making assumptions about the programmer's
+        # intent (e.g. I can check to see if the first argument given has the
+        # target function as a member, but what if we are decorating something
+        # like a copy constructor...?).
+        argspec = getargspec(function)[0]
+        isMethodOrClassmethod = (
+            argspec and
+            (argspec[0] == SELF or argspec[0] == CLS)
+        )
+        self.QUEUE_INSERTION_INDEX = 1 if isMethodOrClassmethod else 0
 
     def __call__(self, *args, **kwargs):
         queue = Queue()
         args = list(args)
         args.insert(self.QUEUE_INSERTION_INDEX, queue)
         return super(_QueuedResultBase, self).__call__(*args, **kwargs), queue
-
-    def __get__(self, obj, klass=None):
-        self.QUEUE_INSERTION_INDEX = 1
-        return super(_QueuedResultBase, self).__get__(obj, klass)
 
 
 class _BlockingBase(_QueuedResultBase):
