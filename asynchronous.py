@@ -108,10 +108,10 @@ class _QueuedResultBase(_AsyncBase):
         return super(_QueuedResultBase, self).__decorator__(*args, **kwargs), queue
 
     def __wrap__(self, function):
-        self._set_insertion_index(function)
+        self.QUEUE_INSERTION_INDEX = self._get_insertion_index(function)
         return super(_QueuedResultBase, self).__wrap__(function)
 
-    def _set_insertion_index(self, function):
+    def _get_insertion_index(self, function):
         # If we are decorating an unbound method then our expectation is
         # that our queueing object will be inserted as the first argument.
         #
@@ -135,7 +135,7 @@ class _QueuedResultBase(_AsyncBase):
             argspec and
             (argspec[0] == SELF or argspec[0] == CLS)
         )
-        self.QUEUE_INSERTION_INDEX = 1 if isMethodOrClassmethod else 0
+        return 1 if isMethodOrClassmethod else 0
 
 
 class _BlockingBase(_QueuedResultBase):
