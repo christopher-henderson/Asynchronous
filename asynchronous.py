@@ -18,7 +18,15 @@ class _Decorator(object):
         if function:
             # If function was not defined then updating the wrapper
             # is deferred until __call__ is executed.
-            update_wrapper(self, function)
+            self.__wrap__(function)
+
+    def __decorator__(self, *args, **kwargs):
+        '''
+        __decorator__ must be defined by inheriting classes as a surrogate
+        to __call__. That is, behavior that you would typically place under
+        __call__ should be placed under __decorator__ instread.
+        '''
+        raise NotImplementedError("Call behavior is not defined in this abstract class")
 
     def __call__(self, *args, **kwargs):
         '''
@@ -45,7 +53,7 @@ class _Decorator(object):
             # ...in which case we need to wrap __decorator__ first via
             # __call_wrapper__ before returning the wrapper proper.
             return self.__decorator__(*args, **kwargs)
-        return self.__call_wrapper__(args[0])
+        return self.__wrap__(args[0])
 
     def __get__(self, obj, klass=None):
         '''
@@ -60,15 +68,7 @@ unbound method {NAME}() must be called with instance as first argument\
             )
         return partial(self.__call__, obj)
 
-    def __decorator__(self, *args, **kwargs):
-        '''
-        __decorator__ must be defined by inheriting classes as a surrogate
-        to __call__. That is, behavior that you would typically place under
-        __call__ should be placed under __decorator__ instread.
-        '''
-        raise NotImplementedError("Call behavior is not defined in this abstract class")
-
-    def __call_wrapper__(self, function):
+    def __wrap__(self, function):
         '''
         Updates self to wrap function.
 
