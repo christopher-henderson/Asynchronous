@@ -140,8 +140,8 @@ class _QueuedResultBase(_AsyncBase):
 
 class _BlockingBase(_QueuedResultBase):
 
-    def __call__(self, *args, **kwargs):
-        _, queue = super(_BlockingBase, self).__call__(*args, **kwargs)
+    def __decorator__(self, *args, **kwargs):
+        _, queue = super(_BlockingBase, self).__decorator__(*args, **kwargs)
         return queue.get()
 
 
