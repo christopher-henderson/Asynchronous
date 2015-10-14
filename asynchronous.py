@@ -52,7 +52,6 @@ class _Decorator(object):
         Non-data descriptor for inserting an instance as the first parameter
         to __call__ if this object is being accessed as a member.
         '''
-        print("descriptor")
         if obj is None:
             raise TypeError('''\
 unbound method {NAME}() must be called with instance as first argument\
