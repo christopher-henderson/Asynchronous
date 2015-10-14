@@ -23,8 +23,8 @@ class _Decorator(object):
     def __decorator__(self, *args, **kwargs):
         '''
         __decorator__ must be defined by inheriting classes as a surrogate
-        to __call__. That is, behavior that you would typically place under
-        __call__ should be placed under __decorator__ instread.
+        to __call__. That is, behavior that you would be typically placed under
+        __call__ should be placed under __decorator__ instead.
         '''
         raise NotImplementedError("Call behavior is not defined in this abstract class")
 
@@ -32,7 +32,7 @@ class _Decorator(object):
         '''
         __call__ behaves like a dispatcher. If a function was received
         during instantation then __decorator__ will be called immediately.
-        Otherwise __call_wrapper__ will be called
+        Otherwise we update this object via __wrap__.
         '''
         if self.function:
             # If we have a function already then that means the method
@@ -71,8 +71,6 @@ unbound method {NAME}() must be called with instance as first argument\
     def __wrap__(self, function):
         '''
         Updates self to wrap function.
-
-        Returns __decorator__ which defines executed behavior.
         '''
         self.function = function
         update_wrapper(self, function)
@@ -103,23 +101,17 @@ class _AsyncBase(_Decorator):
 
 class _QueuedResultBase(_AsyncBase):
 
-    def __init__(self, function=None, daemon=True, **kwargs):
-        super(_QueuedResultBase, self).__init__(function, daemon, **kwargs)
-        if self.function:
-            self._get_insertion_index()
-        else:
-            self.QUEUE_INSERTION_INDEX = -1
-
     def __decorator__(self, *args, **kwargs):
-        if self.QUEUE_INSERTION_INDEX is -1:
-            # Definition of self.function was deferred until now.
-            self._get_insertion_index()
         queue = Queue()
         args = list(args)
         args.insert(self.QUEUE_INSERTION_INDEX, queue)
         return super(_QueuedResultBase, self).__decorator__(*args, **kwargs), queue
 
-    def _get_insertion_index(self):
+    def __wrap__(self, function):
+        self._set_insertion_index(function)
+        return super(_QueuedResultBase, self).__wrap__(function)
+
+    def _set_insertion_index(self, function):
         # If we are decorating an unbound method then our expectation is
         # that our queueing object will be inserted as the first argument.
         #
@@ -138,7 +130,7 @@ class _QueuedResultBase(_AsyncBase):
         # intent (e.g. I can check to see if the first argument given has the
         # target function as a member, but what if we are decorating something
         # like a copy constructor...?).
-        argspec = getargspec(self.function)[0]
+        argspec = getargspec(function)[0]
         isMethodOrClassmethod = (
             argspec and
             (argspec[0] == SELF or argspec[0] == CLS)
