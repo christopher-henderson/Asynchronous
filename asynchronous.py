@@ -23,7 +23,7 @@ class _Decorator(object):
     def __call__(self, *args, **kwargs):
         '''
         __call__ behaves like a dispatcher. If a function was received
-        during instantation then __child_call__ will be called immediately.
+        during instantation then __decorator__ will be called immediately.
         Otherwise __call_wrapper__ will be called
         '''
         if self.function:
@@ -35,16 +35,16 @@ class _Decorator(object):
             #       ...
             #
             # ...thus we can directly call the work defined by the
-            # __child_call__. Otherwise the signature received some arguments
+            # __decorator__. Otherwise the signature received some arguments
             # instead of a function, a la:
             #
             #   @my_decorator(config=True)
             #   def something():
             #       ...
             #
-            # ...in which case we need to wrap __child_call__ first via
+            # ...in which case we need to wrap __decorator__ first via
             # __call_wrapper__ before returning the wrapper proper.
-            return self.__child_call__(*args, **kwargs)
+            return self.__decorator__(*args, **kwargs)
         return self.__call_wrapper__(args[0])
 
     def __get__(self, obj, klass=None):
@@ -60,11 +60,11 @@ unbound method {NAME}() must be called with instance as first argument\
             )
         return partial(self.__call__, obj)
 
-    def __child_call__(self, *args, **kwargs):
+    def __decorator__(self, *args, **kwargs):
         '''
-        __child_call__ must be defined by inheriting classes as a surrogate
+        __decorator__ must be defined by inheriting classes as a surrogate
         to __call__. That is, behavior that you would typically place under
-        __call__ should be placed under __child_call__ instread.
+        __call__ should be placed under __decorator__ instread.
         '''
         raise NotImplementedError("Call behavior is not defined in this abstract class")
 
@@ -72,7 +72,7 @@ unbound method {NAME}() must be called with instance as first argument\
         '''
         Updates self to wrap function.
 
-        Returns __child_call__ which defines executed behavior.
+        Returns __decorator__ which defines executed behavior.
         '''
         self.function = function
         update_wrapper(self, function)
@@ -86,7 +86,7 @@ class _AsyncBase(_Decorator):
         self.daemon = daemon
         self.kwargs = kwargs
 
-    def __child_call__(self, *args, **kwargs):
+    def __decorator__(self, *args, **kwargs):
         '''
         Create, start, and return a thread-like object.
         '''
@@ -110,14 +110,14 @@ class _QueuedResultBase(_AsyncBase):
         else:
             self.QUEUE_INSERTION_INDEX = -1
 
-    def __child_call__(self, *args, **kwargs):
+    def __decorator__(self, *args, **kwargs):
         if self.QUEUE_INSERTION_INDEX is -1:
             # Definition of self.function was deferred until now.
             self._get_insertion_index()
         queue = Queue()
         args = list(args)
         args.insert(self.QUEUE_INSERTION_INDEX, queue)
-        return super(_QueuedResultBase, self).__child_call__(*args, **kwargs), queue
+        return super(_QueuedResultBase, self).__decorator__(*args, **kwargs), queue
 
     def _get_insertion_index(self):
         # If we are decorating an unbound method then our expectation is
