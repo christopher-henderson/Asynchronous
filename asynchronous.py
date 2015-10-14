@@ -43,7 +43,7 @@ class _Decorator(object):
     def __decorator__(self, *args, **kwargs):
         '''
         __decorator__ must be defined by inheriting classes as a surrogate
-        to __call__. That is, behavior that you would be typically placed under
+        to __call__. That is, behavior that would be typically placed under
         __call__ should be placed under __decorator__ instead.
         '''
         raise NotImplementedError("Call behavior is not defined in this abstract class")
