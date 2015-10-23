@@ -25,37 +25,50 @@ class _Decorator(object):
     and a __call__ should be defined. If __init__ accepts only one
     argument, then it will be given the function to be decorated and can be
     used without parenthesis. E.G.:
+    
         @my_decorator
         def some_func():
             pass
+
     If __init__ takes in arguments related to the decorator itself, then
     __call__ must accept the decorated function and return the desired wrapper.
     The result being that a decorator that takens in optional arguments can
     end up looking like this:
+
         @my_decorator(verbose=True)
         def some_func():
             pass
+
         @my_decorator()
         def some_other_func():
             pass
+
     This is cumbersome and leads to confusion on whether or not a particuler
     no-argument decorator requires parenthesis or not.
+    
     In addition, many programmers newer to Python are at a loss on how to pass
     self to a decorated instance method.
+    
     As such, the purpose of the Decorator class is to abstract away the
     nuances of function wrapping, __call__ behavior, and non-data descriptors.
+    
     PROTOCAL:
     When inheriting from this class the typical protocol for writing a
     decorator class changes slightly.
+    
     __decorator__:
         Must be overriden.
         This is where the decorating behavior should be written, as opposed
         to __call__.
+    
     __wrap__:
         Optionally overriden.
         Defines how this class wraps a target function.
+    
     The wrapped function can be found at self.function.
+    
     SIMPLE EXAMPLE:
+    
     ############################################################################
     class Logged(Decorator):
         def __decorator__(self, *args, **kwargs):
@@ -63,22 +76,28 @@ class _Decorator(object):
             function_result = self.function(*args, **kwargs)
             print ("Finished {FUNC}".format(FUNC=self.function.__name__))
             return function_result
+
     @Logged
     def add(a, b):
         return a + b
     result = add(1, 2)
     print (result)
     ############################################################################
+
     OUTPUTS:
         Now calling add
         Finished add
         3
+
     COMPLEX EXAMPLE:
+
     ############################################################################
     class Logged(Decorator):
+
         def __init__(self, function=None, verbose=False):
             self.verbose = verbose
             super(Logged, self).__init__(function)
+
         def __decorator__(self, *args, **kwargs):
             if self.verbose:
                 print ("Now calling {FUNC}".format(
@@ -90,18 +109,23 @@ class _Decorator(object):
                     FUNC=self.function.__name__)
                 )
             return function_result
+
     class Math(object):
+
         @staticmethod
         @Logged
         def add(a, b):
             return a + b
+
         @staticmethod
         @Logged(verbose=True)
         def subract(a, b):
             return a - b
+
     print (Math.add(1, 2))
     print (Math.subract(2, 1))
     ############################################################################
+
     OUTPUTS:
         3
         Now calling subract
@@ -161,7 +185,26 @@ class _Decorator(object):
 
 class _AsyncBase(_Decorator):
 
+    '''
+    Base class for the Asynchronous package.
+
+    Child classes must define a _THREADING_INTERFACE. This interface will be
+    used as the interface for running the decorated function asynchronously.
+    '''
+
     def __init__(self, function=None, daemon=True, **kwargs):
+        
+        '''
+        Optional:
+            daemon:
+                Default - True
+                Whether or not the target function should be daemonized.
+            **kwargs:
+                Default - Empty
+                Keyword arguments that will be passed raw to the
+                    _THREADING_INTERFACE.
+        '''
+
         super(_AsyncBase, self).__init__(function)
         self.daemon = daemon
         self.kwargs = kwargs
@@ -181,6 +224,20 @@ class _AsyncBase(_Decorator):
 
 
 class _QueuedResultBase(_AsyncBase):
+
+    '''
+    Calls to the decorated function will return a tuple of a threading-like
+    object and a multiprocessing.Queue into which the function's results
+    should be expected.
+
+    Functions that are decorated by a _QueuedResultBase decorator must accept
+    a multiprocessing.Queue object as its first, non-self, parameter.
+
+    EXAMPLE:
+
+    thread, queue = my_subroutine()
+    print (queue.get())
+    '''
 
     def __decorator__(self, *args, **kwargs):
         '''Insert multiprocessing.Queue object into parameter list.'''
@@ -230,26 +287,72 @@ class _QueuedResultBase(_AsyncBase):
 
 class _BlockingBase(_QueuedResultBase):
 
+    '''
+    Similar to _QueuedResultBase except that the thread-like object is thrown
+    away and executed is paused until the multiprocessing.Queue receives a
+    value. As such, placing a value into the queue should be treated as
+    the function's return statement.
+
+    Functions that are decorated by a _BlockingBase decorator must accept
+    a multiprocessing.Queue object as its first, non-self, parameter.
+    '''
+
     def __decorator__(self, *args, **kwargs):
         _, queue = super(_BlockingBase, self).__decorator__(*args, **kwargs)
         return queue.get()
 
 
 class Thread(_AsyncBase):
+    '''
+    Decorates a function to be ran asynchronously via threading.Thread.
+    '''
     _THREADING_INTERFACE = _THREAD
 
     class QueuedResult(_QueuedResultBase):
+        '''
+        Decorates a function to be ran asynchronously via threading.Thread.
+
+        Decorated functions are given a multiprocessing.Queue object as its
+        first, non-self, parameter.
+        '''
         _THREADING_INTERFACE = _THREAD
 
     class Blocking(_BlockingBase):
+        '''
+        Decorates a function to be ran asynchronously via threading.Thread.
+
+        Decorated functions are given a multiprocessing.Queue object as its
+        first, non-self, parameter. Execution is blocking until a value is
+        retrieved from the queue. As such, placing a value into the queue
+        should be treated as the function's return statement.
+        '''
         _THREADING_INTERFACE = _THREAD
 
 
 class Process(_AsyncBase):
+    '''
+    Decorates a function to be ran asynchronously via multiprocessing.Process.
+    '''
     _THREADING_INTERFACE = _PROCESS
 
     class QueuedResult(_QueuedResultBase):
+        '''
+        Decorates a function to be ran asynchronously via
+        multiprocessing.Process.
+
+        Decorated functions are given a multiprocessing.Queue object as its
+        first, non-self, parameter.
+        '''
         _THREADING_INTERFACE = _PROCESS
 
     class Blocking(_BlockingBase):
+        '''
+        Decorates a function to be ran asynchronously via
+        multiprocessing.Process.
+
+        Decorated functions are given a multiprocessing.Queue object as its
+        first, non-self, parameter. Execution is blocking until a value is
+        retrieved from the queue. As such, placing a value into the queue
+        should be treated as the function's return statement.
+        '''
         _THREADING_INTERFACE = _PROCESS
